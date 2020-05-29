@@ -1,1 +1,1033 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>Complex Geometry Site</title>
+        <style>
+            * {padding:0; margin:0;}
+            canvas {background: #eee; display: inline-block; margin: 0 auto; border: 2px solid black}
+            #codeInput {display:block}
+            h1{text-align: center;}
+        </style>
+    </head>
+
+    <body>
+        <br>
+        <h1>
+            Complex Geometry Site
+        </h1>
+        <br>
+        <div style="margin:auto;width:fit-content">
+            <div style="display: inline-block">
+                <textarea id="codeInput" rows="30" cols="45" spellcheck="false"></textarea>
+                <div>
+                    <button type="button" onclick="runCode();" style="width:100%">Run Code</button>
+                </div>
+            </div>
+            
+            <canvas id="myCanvas" width="800" height="600">Canvas not supported</canvas>
+        </div>
+        
+        <script>
+
+            var canvas = document.getElementById("myCanvas");
+            var ctx = canvas.getContext("2d");
+            
+            document.addEventListener("mousemove", mouseMoveHandler, false);
+            document.addEventListener("mousedown", mouseDownHandler, false);
+            document.addEventListener("mouseup", mouseUpHandler, false);
+
+            var inputHolder = {
+                mouseDown: false,
+                mouseX: 0,
+                mouseY: 0,
+                oldMouseX: 0,
+                oldMouseY: 0,
+                inCanvas: false
+            }
+
+            function mouseMoveHandler(e) {
+                inputHolder.oldMouseX = inputHolder.mouseX;
+                inputHolder.oldMouseY = inputHolder.mouseY;
+                inputHolder.mouseX = e.clientX - canvas.offsetLeft;
+                inputHolder.mouseY = e.clientY - canvas.offsetTop;
+                inputHolder.inCanvas = e.clientX > canvas.offsetLeft && e.clientX < canvas.offsetLeft + canvas.offsetWidth
+                    && e.clientY > canvas.offsetTop && e.clientY < canvas.offsetTop + canvas.offsetHeight;
+                
+                
+                if(inputHolder.inCanvas && inputHolder.mouseDown){
+                    //Shift the grid
+                    grid.centerx -= (inputHolder.mouseX - inputHolder.oldMouseX)/(grid.pixelperunit);
+                    grid.centery -= -(inputHolder.mouseY - inputHolder.oldMouseY)/(grid.pixelperunit);
+                }
+            }
+
+            function mouseDownHandler(e){
+                inputHolder.mouseDown = true;
+                //Do rising edge stuff here
+            }
+
+            function mouseUpHandler(e){
+                inputHolder.mouseDown = false;
+            }
+
+            var grid = {
+                centerx: 0,
+                centery: 0,
+                pixelperunit: 200.0,
+                linesperunit: 5,
+                linewidth: 2,
+                circlewidth: 5,
+                draw : function(ctx, canvas){
+                    //Center circle
+                    ctx.lineWidth = this.circlewidth;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width/2.0 - this.pixelperunit*this.centerx, canvas.height/2.0 + this.pixelperunit*this.centery, this.pixelperunit, 0, Math.PI*2, false);
+                    ctx.fillStyle = "black";
+                    ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    //imaginary and real axis
+                    ctx.beginPath();
+                    ctx.moveTo(canvas.width/2.0 - this.pixelperunit*this.centerx, 0);
+                    ctx.lineTo(canvas.width/2.0 - this.pixelperunit*this.centerx, canvas.height);
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, canvas.height/2.0 + this.pixelperunit*this.centery);
+                    ctx.lineTo(canvas.width, canvas.height/2.0 + this.pixelperunit*this.centery);
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    ctx.lineWidth = this.linewidth;
+
+                    //Horizontal and vertical lines
+                    for(var x = (canvas.width/2.0 - this.pixelperunit*this.centerx) % (this.pixelperunit/this.linesperunit); 
+                    x < canvas.width; x += this.pixelperunit/this.linesperunit){
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, canvas.height);
+                        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+                        ctx.stroke();
+                        ctx.closePath();
+                    }
+
+                    for(var y = (canvas.height/2.0 - this.pixelperunit*this.centery) % (this.pixelperunit/this.linesperunit); 
+                    y < canvas.height; y += this.pixelperunit/this.linesperunit){
+                        ctx.beginPath();
+                        ctx.moveTo(0, canvas.height - y);
+                        ctx.lineTo(canvas.width, canvas.height - y);
+                        ctx.stroke();
+                        ctx.closePath();
+                    }
+                },
+
+                convertToGridCoords : function(canvasCoords, canvas){
+                    var gridCoords = {
+                        x: (canvasCoords.x - canvas.width/2)/this.pixelperunit + this.centerx,
+                        y: - (canvasCoords.y - canvas.height/2)/this.pixelperunit + this.centery
+                    }
+                    return gridCoords;
+                },
+
+                convertToCanvasCoords : function(gridCoords, canvas){
+                    var canvasCoords = {
+                        x : (gridCoords.x - this.centerx)*this.pixelperunit + canvas.width/2,
+                        y : - (gridCoords.y - this.centery)*this.pixelperunit + canvas.height/2
+                    }
+                    return canvasCoords;
+                }
+            }            
+
+            //Complex Number factory function
+            function constructComplexNumber(real, imag) {
+                return {
+                    real : real,
+                    imag : imag,
+                    DRAWSIZE : 8,
+
+                    draw : function(canvas, ctx, grid) {
+                        var gridCoords = {x: this.real, y: this.imag};
+                        var canvasCoords = grid.convertToCanvasCoords(gridCoords, canvas);
+                        
+                        ctx.lineWidth = 1;
+                        ctx.fillStyle = "green";
+                        ctx.beginPath();
+                        ctx.arc(canvasCoords.x, canvasCoords.y, this.DRAWSIZE, 0, Math.PI*2, false);
+                        ctx.fill();
+                        ctx.closePath();
+                    },
+
+                    toString : function(){
+                        if (this.imag == 0){
+                            return "" + this.real;
+                        } else if (this.real == 0){
+                            return "" + this.imag + "i";
+                        } else {
+                            return "" + this.real + "+" + this.imag + "i";
+                        }
+                    },
+                    clone:function(){
+                        return constructComplexNumber(this.real, this.imag);
+                    },
+                    conj : function(){
+                        return constructComplexNumber(this.real, -this.imag);
+                    },
+                    mag : function(){
+                        return Math.sqrt(this.real*this.real + this.imag*this.imag);
+                    },
+                    add : function(c){
+                        return constructComplexNumber(this.real + c.real, this.imag + c.imag);
+                    },
+                    sub : function(c){
+                        return constructComplexNumber(this.real - c.real, this.imag - c.imag);
+                    },
+                    mul : function(c){
+                        return constructComplexNumber(this.real * c.real - this.imag * c.imag, this.real * c.imag + this.imag * c.real);
+                    },
+                    div : function(c){
+                        return this.mul( c.conj().mul( constructComplexNumber(1/(c.mag() * c.mag()),0)) );
+                    },
+                    isZero : function(){
+                        return this.real == 0 && this.imag == 0;
+                    }
+                }
+            }
+
+            function ccn(real, imag){
+                return constructComplexNumber(real, imag);
+            }
+
+            //The ".terms" part of the polynomial houses the terms. They look like the following:
+            //term = {a:1, b:2, _coefficient:ccn(7, 0), _id: _a1b2} <=> 7ab^2
+            //term = {_coefficient:ccn(3, 1), _id:_} <=> 3+i
+            //terms[term._id] = term
+            //Underscore denote do not touch
+            function constructPolynomial(){
+                return {
+                    terms : {},
+                    //THIS METHOD IS ONLY FOR TESTING PURPOSES; SHOULD NOT BE USED FOR REAL FOR REAL
+                    insertLazyTerm : function(term){ //Only does stuff if the coefficient isn't 0
+                        if(term._coefficient != 0){
+                            term._id = this.generateId(term);
+                            if(typeof term._coefficient == "number"){
+                                term._coefficient = ccn(term._coefficient, 0);
+                            }
+                            this.terms[term._id] = term;
+                        }
+                        return this;
+                    },
+                    generateId : function(term){
+                        var powerList = [];
+                        for(var property in term){
+                            if(!(property.startsWith("_"))){
+                                powerList.push(property);
+                            }
+                        }
+                        powerList.sort();
+                        var id = "_";
+                        for(var i = 0; i < powerList.length; i++){
+                            id += powerList[i] + "^" + term[powerList[i]];
+                        }
+                        return id;
+                    },
+                    toString : function(){
+                        var str = "";
+                        
+                        for(var property in this.terms){
+                            var term = this.terms[property];
+                            if(str != ""){
+                                str += " + ";
+                            }
+                            str += term._coefficient.toString() + term._id.substr(1);
+                        }
+                        
+                        return str;
+                    },
+                    getDeepTerm : function(termID){
+                        var term = this.terms[termID];
+                        var termCopy = {};
+                        for(var property in term){
+                            termCopy[property] = term[property];
+                        }
+                        termCopy._coefficient = term._coefficient.clone();
+                        return termCopy;
+                    },
+
+                    add : function(poly){
+                        var sum = constructPolynomial();
+                        for(var termID in this.terms){ //Copy this to the sum. Watch out for needing deep copies
+                            sum.terms[termID] = this.getDeepTerm(termID);
+                        }
+                        for(var termID in poly.terms){ //Add poly to the sum
+                            if(sum.terms[termID] == undefined){ //If it's a new term
+                                sum.terms[termID] = poly.getDeepTerm(termID); //Just copy it in
+                            } else { //Both polynomials share a term
+                                var newCoefficient = sum.terms[termID]._coefficient.add(poly.terms[termID]._coefficient);
+                                if(newCoefficient.isZero()){ //If sums to 0, remove the term
+                                    delete sum.terms[termID];
+                                } else {
+                                    sum.terms[termID]._coefficient = newCoefficient;
+                                }
+                            }
+                        }
+                        return sum;
+                    },
+                    sub : function(poly){
+                        var dif = constructPolynomial();
+                        for(var termID in this.terms){ //Copy this to the dif
+                            dif.terms[termID] = this.getDeepTerm(termID);
+                        }
+                        for(var termID in poly.terms){ //Subtract poly from the dif
+                            if(dif.terms[termID] == undefined){ //If it's a new term
+                                dif.terms[termID] = poly.getDeepTerm(termID); //Just copy it in and flip sign
+                                dif.terms[termID]._coefficient = dif.terms[termID]._coefficient.mul(ccn(-1,0));
+                            } else { //Both polynomials share a term
+                                var newCoefficient = dif.terms[termID]._coefficient.sub(poly.terms[termID]._coefficient);
+                                if(newCoefficient.isZero()){ //If subtracts to 0, remove the term
+                                    delete dif.terms[termID];
+                                } else {
+                                    dif.terms[termID]._coefficient = newCoefficient;
+                                }
+                            }
+                        }
+                        return dif;
+                    },
+                    mul : function(poly){
+                        var prod = constructPolynomial();
+                        for(var termIDA in this.terms){
+                            for(var termIDB in poly.terms){
+                                //Create term from multiplying the two terms
+                                var newTerm = {};
+                                var termA = this.terms[termIDA];
+                                var termB = poly.terms[termIDB];
+                                for(var property in termA){
+                                    if(!(property.startsWith("_"))){
+                                        newTerm[property] = termA[property];
+                                    }
+                                }
+                                for(var property in termB){
+                                    if(!(property.startsWith("_"))){
+                                        if(newTerm[property] == undefined){
+                                            newTerm[property] = 0;
+                                        }
+                                        newTerm[property] += termB[property];
+                                    }
+                                }
+                                newTerm._coefficient = termA._coefficient.mul(termB._coefficient);
+                                newTerm._id = this.generateId(newTerm);
+
+                                //Add the new term to the product
+                                if(prod.terms[newTerm._id] == undefined){ //If it's a new term
+                                    prod.terms[newTerm._id] = newTerm; //Just put it in
+                                } else { //Term already exists
+                                    var newCoefficient = prod.terms[newTerm._id]._coefficient.add(newTerm._coefficient);
+                                    if(newCoefficient.isZero()){ //If adds to 0, remove the term
+                                        delete prod.terms[newTerm._id];
+                                    } else {
+                                        prod.terms[newTerm._id]._coefficient = newCoefficient;
+                                    }
+                                }
+                            }
+                        }
+                        return prod;
+                    },
+                    
+                    equals : function(poly){
+                        var dif = this.sub(poly);
+                        for(var property in dif.terms){
+                            return false;
+                        }
+                        return true;
+                    },
+
+                    //Simply needs an object of the form {a: ccn(3,2), b:ccn(7,3)} basically
+                    eval : function(complexVars){ 
+                        var result = ccn(0,0);
+                        for(var termID in this.terms){
+                            //Evaluate each term
+                            var term = this.terms[termID];
+                            var termEval = ccn(1,0);
+                            for(var property in term){
+                                if(!(property.startsWith("_"))){
+                                    for(var p = 0; p < term[property]; p++){
+                                        if(complexVars[property] == undefined){
+                                            alert("ComplexVars passed in without necessary arguments. Missing " + property)
+                                        } else {
+                                            termEval = termEval.mul(complexVars[property]);
+                                        }
+                                    }
+                                }
+                            }
+                            termEval = termEval.mul(term._coefficient); //Multiply coefficient here
+
+                            result = result.add(termEval);
+                        }
+                        return result;
+                    },
+                    /*factor : function(poly, polyFactor){
+
+                    }*/
+                    //Returns an object. If it has a property of a certain name, than that name is a dependent
+                    getDepends : function(){
+                        var depends = {};
+                        for(var termID in this.terms){
+                            var term = this.terms[termID];
+                            for(var property in term){
+                                if(!(property.startsWith("_"))){
+                                    if(depends[property] == undefined){
+                                        depends[property] = true;
+                                    }
+                                }
+                            }
+                        }
+                        return depends;
+                    },
+
+                    //TryFactor, only takes in single variables, (returns null if it don't work)
+                    tryFactor : function(variable){
+                        var result = constructPolynomial();
+                        for(var termID in this.terms){
+                            var term = this.getDeepTerm(termID);
+                            if(term[variable] == undefined || term[variable] == 0){
+                                return null;
+                            }
+                            term[variable] -= 1;
+                            if(term[variable] == 0) delete term[variable];
+                            result.insertLazyTerm(term);
+                        }
+                        return result;
+                    }
+                }
+            }
+
+            function polyTest(){
+                var testPoly1 = constructPolynomial();
+                //alert(testPoly1.generateId({a:1, b:2, _coefficient:7}));
+                testPoly1.insertLazyTerm({a:1, b:2, _coefficient:7});
+                testPoly1.insertLazyTerm({_coefficient:3});
+                testPoly1.insertLazyTerm({a:5, _coefficient:3});
+                alert("testPoly1: " + testPoly1.toString());
+
+                var testPoly2 = constructPolynomial();
+                testPoly2.insertLazyTerm({a:2, _coefficient:0});
+                testPoly2.insertLazyTerm({a:1, b:2, _coefficient:-7});
+                testPoly2.insertLazyTerm({_coefficient:3});
+                testPoly2.insertLazyTerm({a:1, _coefficient:8});
+                alert("testPoly2: " + testPoly2.toString());
+
+                var sum = testPoly1.add(testPoly2);
+                alert("Sum: " + sum.toString());
+                //alert("testPoly1: " + testPoly1.toString());
+                //alert("testPoly2: " + testPoly2.toString());
+                var dif = testPoly1.sub(testPoly2);
+                alert("Dif: " + dif.toString());
+
+                var prod = testPoly1.mul(testPoly2);
+                alert("Prod: " + prod.toString());
+
+                alert("testPoly1: " + testPoly1.toString());
+                alert("testPoly2: " + testPoly2.toString());
+
+                var px = constructPolynomial()
+                    .insertLazyTerm({a:1, _coefficient:1})
+                    .insertLazyTerm({b:1, _coefficient:ccn(0,1)});
+                var py = constructPolynomial()
+                    .insertLazyTerm({a:1, _coefficient:1})
+                    .insertLazyTerm({b:1, _coefficient:ccn(0,-1)});
+                alert(px.mul(py));
+                var pz = constructPolynomial()
+                    .insertLazyTerm({a:2, _coefficient:1})
+                    .insertLazyTerm({b:2, _coefficient:1});
+                alert(px.mul(py).equals(pz));
+            
+                alert(pz.eval({a:ccn(1,0), b:ccn(4,0)}).toString());
+                alert(pz.eval({a:ccn(0,1), b:ccn(4,0)}).toString());
+            }
+
+            //polyTest();
+
+            //Num and denom must be polynomial expressions
+            function constructRationalExp(num, denom){
+                return {
+                    num: num,
+                    denom: denom,
+                    toString : function(){
+                        return "Num: " + this.num.toString() + "\nDenom: " + this.denom.toString();
+                    },
+                    add : function(ratExp){
+                        if(this.denom.equals(ratExp.denom)){
+                            return constructRationalExp(this.num.add(ratExp.num), this.denom);
+                        }
+                        return constructRationalExp(this.num.mul(ratExp.denom).add(this.denom.mul(ratExp.num)), this.denom.mul(ratExp.denom));
+                    },
+                    sub : function(ratExp){
+                        if(this.denom.equals(ratExp.denom)){
+                            return constructRationalExp(this.num.sub(ratExp.num), this.denom);
+                        }
+                        return constructRationalExp(this.num.mul(ratExp.denom).sub(this.denom.mul(ratExp.num)), this.denom.mul(ratExp.denom));
+                    },
+                    mul : function(ratExp){
+                        return constructRationalExp(this.num.mul(ratExp.num), this.denom.mul(ratExp.denom));
+                    },
+                    div : function(ratExp){
+                        return constructRationalExp(this.num.mul(ratExp.denom), this.denom.mul(ratExp.num));
+                    },
+                    equals : function(ratExp){
+                        return this.num.mul(ratExp.denom).equals(ratExp.num.mul(this.denom));
+                    },
+                    eval : function(complexVars){
+                        return this.num.eval(complexVars).div(this.denom.eval(complexVars));
+                    },
+                    simplify : function(){ //Only simplifies if top and bottom both have all factors divisble by p, for example
+                        var posVars = this.num.getDepends();
+                        
+                        for(var variable in posVars){
+                            while(true){
+                                var newNum = this.num.tryFactor(variable);
+                                var newDenom = this.denom.tryFactor(variable);
+                                if(newNum == null || newDenom == null) break;
+                                this.num = newNum;
+                                this.denom = newDenom;
+                            }
+                        }
+                        return this;
+                    },
+                    conj : function(pointHolder){
+                        //Returns its conjugate
+                        var numConj = constructConstRatExp(0);
+                        for(var termID in this.num.terms){
+                            var term = this.num.terms[termID];
+                            var termConj = constructConstRatExp(term._coefficient.conj());
+                            for(var property in term){
+                                if(!(property.startsWith("_"))){
+                                    for(var p = 0; p < term[property]; p++){
+                                        termConj = termConj.mul(pointHolder[property].conjExp);
+                                    }
+                                }
+                            }
+                            numConj = numConj.add(termConj);
+                        }
+
+                        var denomConj = constructConstRatExp(0);
+                        for(var termID in this.denom.terms){
+                            var term = this.denom.terms[termID];
+                            var termConj = constructConstRatExp(term._coefficient.conj());
+                            for(var property in term){
+                                if(!(property.startsWith("_"))){
+                                    for(var i = 0; i < term[property]; i++){
+                                        termConj = termConj.mul(pointHolder[property].conjExp);
+                                    }
+                                }
+                            }
+                            denomConj = denomConj.add(termConj);
+                        }
+
+                        var conjExp = numConj.div(denomConj);
+                        conjExp.simplify();
+                        return conjExp;
+                    }
+                }
+            }
+
+            function constructConstRatExp(z){
+                return constructRationalExp(
+                    constructPolynomial().insertLazyTerm({_coefficient:z}),
+                    constructPolynomial().insertLazyTerm({_coefficient:1})
+                )
+            }
+
+            function ratExpTest(){
+                var ortho = constructRationalExp(
+                    constructPolynomial().insertLazyTerm({a:1, _coefficient:1}).insertLazyTerm({b:1, _coefficient:1}).insertLazyTerm({c:1, _coefficient:1}), 
+                    constructPolynomial().insertLazyTerm({_coefficient:1})
+                );
+
+                alert(ortho.toString());
+
+                var orthoRef = constructRationalExp(
+                    constructPolynomial().insertLazyTerm({b:1, c:1, _coefficient:-1}), 
+                    constructPolynomial().insertLazyTerm({a:1, _coefficient:1})
+                );
+
+                alert(orthoRef.toString());
+
+                var testRatExp = constructRationalExp(
+                    constructPolynomial().insertLazyTerm({_coefficient:1}),
+                    constructPolynomial().insertLazyTerm({b:2, c:1, _coefficient:2}).insertLazyTerm({a:1, _coefficient:3}),
+                );
+
+                alert(testRatExp.toString());
+
+                var foot = ortho.add(orthoRef).mul(
+                    constructRationalExp(
+                        constructPolynomial().insertLazyTerm({_coefficient:0.5}),
+                        constructPolynomial().insertLazyTerm({_coefficient:1})));
+                alert(foot.toString());
+                alert(ortho.sub(orthoRef).toString());
+                alert(ortho.mul(orthoRef).toString());
+                alert(ortho.div(orthoRef).toString());
+
+                alert(testRatExp.add(orthoRef).toString());
+
+                alert(foot.eval({a:ccn(1,0), b:ccn(-1, 0), c:ccn(0, 1)}));
+            }
+
+            function constructAbstractPoint(){
+                return {
+                    id : null,
+                    supports : {},
+                    depends : {},
+                    pointHolder : null,
+
+                    show : true,
+                    reShow : function(newShow){
+                        this.show = newShow;
+                        return this;
+                    },
+                    color : "#3333EE",
+                    reColor : function(newColor){
+                        this.color = newColor;
+                        return this;
+                    },
+                    speed : 0,
+                    reSpeed : function(newSpeed){
+                        this.speed = newSpeed;
+                        return this;
+                    },
+                    draw : function(canvas, ctx, grid){
+                        if(this.show){
+                            var value = this.eval();
+                            var gridCoords = {x: value.real, y: value.imag};
+                            var canvasCoords = grid.convertToCanvasCoords(gridCoords, canvas);
+                            
+                            ctx.lineWidth = 1;
+                            ctx.fillStyle = this.color;
+                            ctx.beginPath();
+                            ctx.arc(canvasCoords.x, canvasCoords.y, 8, 0, Math.PI*2, false);
+                            ctx.fill();
+                            ctx.closePath();
+
+                            ctx.font = "42px Arial";
+                            ctx.fillStyle = this.color;
+                            ctx.fillText(this.id, canvasCoords.x+10, canvasCoords.y+20);
+                            //ctx.strokeStyle = "white";
+                            //ctx.lineWidth = 1;
+                            //ctx.strokeText(this.id, canvasCoords.x, canvasCoords.y);
+                        }
+                    },
+                    
+                    exp : null,
+                    conjExp : null,
+                    eval : function(){
+                        alert("Undefined");
+                    }
+                };
+            }
+
+            function constructUnitCirclePoint(id, theta, pointHolder){
+                var point = constructAbstractPoint();
+                point.id = id;
+                point.pointHolder = pointHolder;
+                point.theta = theta;
+                point.eval = function(){
+                    return ccn(Math.cos(this.theta/360*(2*Math.PI)), Math.sin(this.theta/360*(2*Math.PI)));
+                }
+                //point.value = point.eval(pointHolder);
+                var origDraw = point.draw;
+                point.draw = function(canvas, ctx, grid){
+                    origDraw.call(this, canvas, ctx, grid);
+                    this.theta += this.speed;
+                    if(this.theta > 360) this.theta -= 360;
+                    if(this.theta < 0) this.theta += 360;
+                }
+
+                var term = {_coefficient:1};
+                term[id] = 1;
+                point.exp = constructRationalExp(
+                    constructPolynomial().insertLazyTerm(term),
+                    constructPolynomial().insertLazyTerm({_coefficient:1})
+                );
+                point.conjExp = constructRationalExp(
+                    constructPolynomial().insertLazyTerm({_coefficient:1}),
+                    constructPolynomial().insertLazyTerm(term)
+                );
+                return point;
+            }
+
+            function constructDefinedPoint(id, exp, pointHolder){
+                var point = constructAbstractPoint();
+                
+                point.id = id;
+                //Depends, update their supports
+                var tempDepends = {};
+                for(var property in exp.num.getDepends()){
+                    if(tempDepends[property] == undefined){
+                        tempDepends[property] = true;
+                    }
+                }
+                for(var property in exp.denom.getDepends()){
+                    if(tempDepends[property] == undefined){
+                        tempDepends[property] = true;
+                    }
+                }
+                //Does not check the expConj since they should have the same dependencies as exp
+                point.depends = tempDepends;
+                for(var p in point.depends){
+                    if(pointHolder[p] == undefined){
+                        alert("AHHHHHH undefined point used as dependency in constructDefinedPoint");
+                    } else {
+                        pointHolder[p].supports[id] = true;
+                    }
+                }
+
+                point.pointHolder = pointHolder;
+
+                point.exp = exp;
+                
+                point.conjExp = exp.conj(pointHolder);
+
+                point.eval = function(pointHolder){
+                    var complexVars = {};
+                    for(var property in this.depends){
+                        complexVars[property] = this.pointHolder[property].eval();
+                    }
+                    return this.exp.eval(complexVars);
+                }
+
+                return point;
+            }
+
+            var pointHolder = {};
+            
+            var pointFormulas = {
+                constantPoint : function(id, complexNum, pointHolder){
+                    return constructDefinedPoint(id, constructConstRatExp(complexNum), pointHolder);
+                },
+                conjugatePoint : function(id, point, pointHolder){
+                    return constructDefinedPoint(id, point.conjExp, pointHolder);
+                },
+                weightedAverage : function(id, pointA, pointB, k, pointHolder){ //The weighted average is calculated by kA + (1-k)B. k must be a real number
+                    var newExp = pointA.exp.mul(constructConstRatExp(k)).add(pointB.exp.mul(constructConstRatExp(1-k)));
+                    return constructDefinedPoint(id, newExp, pointHolder);
+                },
+                unitCircleComplexFoot : function(id, a, b, z, pointHolder){
+                    var half = constructConstRatExp(0.5);
+                    var newExp = half.mul(a.exp.add(b.exp.add(z.exp.sub(a.exp.mul(b.exp.mul(z.conjExp))))));
+                    return constructDefinedPoint(id, newExp, pointHolder);
+                },
+                unitCircleOrthocenter : function(id, a, b, c, pointHolder){
+                    var orthoExp = a.exp.add(b.exp.add(c.exp));
+                    return constructDefinedPoint(id, orthoExp, pointHolder);
+                }
+            }
+
+            var verify = {
+                collinear : function(nameA, nameB, nameC, pointHolder){
+                    var pointA = pointHolder[nameA];
+                    var pointB = pointHolder[nameB];
+                    var pointC = pointHolder[nameC];
+
+                    var testExp = pointA.exp.sub(pointB.exp).div(pointA.exp.sub(pointC.exp));
+                    
+                    return testExp.conj(pointHolder).equals(testExp);
+                },
+                perpendicular : function(nameA, nameB, nameC, pointHolder){ //Point A is tested to see if it's a right angle
+                    var pointA = pointHolder[nameA];
+                    var pointB = pointHolder[nameB];
+                    var pointC = pointHolder[nameC];
+
+                    var testExp = pointA.exp.sub(pointB.exp).div(pointA.exp.sub(pointC.exp));
+                    
+                    //testExp.simplify();
+                    return testExp.conj(pointHolder).mul(constructConstRatExp(-1)).equals(testExp);
+                }
+            }
+            
+            //alert(verify.collinear("a","b","c", pointHolder));
+            //alert(verify.collinear("d","e","f", pointHolder));
+            //alert(verify.collinear("d","m","f", pointHolder));
+            //alert(verify.perpendicular("d","b","p", pointHolder));
+            
+            var geoObjectList = [];
+
+            function constructAbstractGeoObject(){
+                return {
+                    draw : function(pointHolder, canvas, ctx, grid){
+
+                    },
+                    color: "#444444",
+                    pointNames : [],
+                    id : "",
+                    getCanvasCoords : function(pointHolder, grid, canvas){
+                        var result = [];
+                        for(var i = 0; i < this.pointNames.length; i++){
+                            var value = pointHolder[this.pointNames[i]].eval();
+                            var gridCoords = {x: value.real, y: value.imag};
+                            var canvasCoords = grid.convertToCanvasCoords(gridCoords, canvas);
+                            result[i] = canvasCoords;
+                        }
+                        return result;
+                    },
+                    reColor : function(newColor){
+                        this.color = newColor;
+                        return this;
+                    }
+                }
+            }
+
+            function constructLineSegGeoObject(nameA, nameB){
+                var geoObject = constructAbstractGeoObject();
+                geoObject.id = "lineSeg_" + nameA + nameB;
+                geoObject.pointNames = [nameA, nameB];
+                geoObject.draw = function(pointHolder, canvas, ctx, grid){
+                    
+                    var canvasCoordsList = this.getCanvasCoords(pointHolder, grid, canvas);
+                    
+                    ctx.lineWidth = 5;
+                    ctx.strokeStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(canvasCoordsList[0].x, canvasCoordsList[0].y);
+                    ctx.lineTo(canvasCoordsList[1].x, canvasCoordsList[1].y);
+                    ctx.stroke();
+                }
+
+                return geoObject;
+            }
+
+            function constructLineGeoObject(nameA, nameB){
+                var geoObject = constructLineSegGeoObject(nameA, nameB);
+                geoObject.id = "line_" + nameA + nameB;
+                geoObject.draw = function(pointHolder, canvas, ctx, grid){
+                    var canvasCoordsList = this.getCanvasCoords(pointHolder, grid, canvas);
+
+                    
+                    var slope = (canvasCoordsList[1].y - canvasCoordsList[0].y)/(canvasCoordsList[1].x - canvasCoordsList[0].x);
+                    var pointA;
+                    var pointB;
+                    
+                    if(slope != Infinity){
+                        var yCoordForWhenHitRightWall = slope*(canvas.width-canvasCoordsList[0].x) + canvasCoordsList[0].y;
+                        if(yCoordForWhenHitRightWall > canvas.height){
+                            pointA = {x: (canvas.height-canvasCoordsList[0].y)/slope + canvasCoordsList[0].x, y: canvas.height};
+                        } else if (yCoordForWhenHitRightWall < 0){
+                            pointA = {x: (0-canvasCoordsList[0].y)/slope + canvasCoordsList[0].x, y: 0};
+                        } else {
+                            pointA = {x: canvas.width, y: yCoordForWhenHitRightWall};
+                        }
+
+                        var yCoordForWhenHitLeftWall = slope*(-canvasCoordsList[0].x) + canvasCoordsList[0].y;
+                        if(yCoordForWhenHitLeftWall > canvas.height){
+                            pointB = {x: (canvas.height-canvasCoordsList[0].y)/slope + canvasCoordsList[0].x, y: canvas.height};
+                        } else if (yCoordForWhenHitLeftWall < 0){
+                            pointB = {x: (0-canvasCoordsList[0].y)/slope + canvasCoordsList[0].x, y: 0};
+                        } else {
+                            pointB = {x: 0, y: yCoordForWhenHitLeftWall};
+                        }
+                    } else {
+                        pointA = {x:canvasCoordsList[0].x, y:0}
+                        pointB = {x:canvasCoordsList[0].x, y:canvas.height}
+                    }
+                    
+                    ctx.lineWidth = 5;
+                    ctx.strokeStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(pointA.x, pointA.y);
+                    ctx.lineTo(pointB.x, pointB.y);
+                    ctx.stroke();
+                }
+                return geoObject;
+            }
+
+            function runCode(){
+                codeHandler.runCode(document.getElementById("codeInput").value);
+            }
+            var codeHandler = {
+                functions : { //All must accept string arguments
+                    unitcircle : function(name, theta, color, show, speed){
+                        this.functions.createunitcirclepoint(name, theta, color, show, speed);
+                    },
+                    createunitcirclepoint : function(name, theta, color, show, speed){ //Create is used to indicate creation
+                        if(name == undefined || name == ""){
+                            alert("ERROR: No name given to point");
+                            return;
+                        }
+                        if(theta == undefined) theta = "0.0";
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+                        if(speed == undefined) speed = "0.0";
+
+                        //Parse string inputs
+                        theta = parseFloat(theta);
+                        if(isNaN(theta)) theta = 0;
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){
+                            show = true;
+                        } else {
+                            show = false;
+                        }
+
+                        speed = parseFloat(speed);
+                        if(isNaN(speed)) speed = 0;
+
+                        if(pointHolder[name] != undefined){ 
+                            alert("ERROR: Point " + name + " already created; function does nothing");
+                            return;
+                        }
+                        
+                        pointHolder[name] = constructUnitCirclePoint(name, theta, pointHolder).reShow(show).reColor(color).reSpeed(speed);
+                    },
+                    ucfoot : function(name, nameA, nameB, nameZ, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameZ == undefined || pointHolder[nameZ] == undefined){ alert("ERROR: Invalid nameZ given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.unitCircleComplexFoot(name, pointHolder[nameA], pointHolder[nameB], pointHolder[nameZ], pointHolder).reShow(show).reColor(color);
+
+                    },
+                    ucortho : function(name, nameA, nameB, nameC, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.unitCircleOrthocenter(name, pointHolder[nameA], pointHolder[nameB], pointHolder[nameC], pointHolder).reShow(show).reColor(color);
+
+                    },
+                    wavg: function(name, nameA, nameB, k, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(k == undefined) k = 0.5;
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+                        
+                        k = parseFloat(k);
+                        if(isNaN(k)) k = 0.5;
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.weightedAverage(name, pointHolder[nameA], pointHolder[nameB], k, pointHolder).reShow(show).reColor(color);
+
+                    },
+                    constpoint : function (name, real, imag, color, show){
+
+                    },
+                    drawlineseg : function(nameA, nameB, color){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        geoObjectList.push(constructLineSegGeoObject(nameA, nameB).reColor(color));
+                    },
+                    drawline : function(nameA, nameB, color){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        geoObjectList.push(constructLineGeoObject(nameA, nameB).reColor(color));
+                    }
+                },
+                code : [],
+                runCode : function(code){
+                    //Clear all
+                    pointHolder = {};
+                    geoObjectList = [];
+
+                    var linesOfCode = code.split("\n");
+                    for(var i = 0; i < linesOfCode.length; i++){
+                        var lineCode = linesOfCode[i];
+                        var lineCode = lineCode.replace(/\s+/g, '');
+                        if(lineCode == "") continue;
+                        var lineSplit = lineCode.split(/[\(\)]/, 2);
+                        var lineFunc = lineSplit[0].toLowerCase();
+                        if(lineSplit.length == 0 || this.functions[lineFunc] == undefined){
+                            alert("ERROR in line " + (i+1) + ": Function doesn't exist");
+                            continue;
+                        }
+                        if(lineSplit.length < 2){
+                            alert("ERROR in line " + (i+1) + ": Parameters are undefined");
+                            continue;
+                        }
+
+                        var lineParam = lineSplit[1].split(",");
+                        this.functions[lineFunc].apply(this, lineParam);
+                    }
+                }
+            }
+            
+            //TODO: 3000 methods
+            //Intersection of chords
+            //Intersection of lines
+            //General complex foot
+            //Intersection of line with a point on unit circle with unit circle
+            //Parse formula?
+
+            //TODO: circle geoObject
+
+            //TODO: psuedo programming
+
+            //TODO: verify methods
+            //Concyclic check
+            //Check on chord
+            //Tangent check?
+
+            //Help in the parts below
+
+            //=== Unlikely ===
+
+            //TODO: improve pointHolder
+
+            //TODO: more geometric objects
+
+            //TODO: make pretty
+
+            //TODO: moveable points
+            
+            
+            
+
+
+            function drawText(text, x, y){
+                ctx.font = "16px Arial";
+                ctx.fillStyle = "#0095DD";
+                ctx.fillText(text, x, y);
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                grid.draw(ctx, canvas);
+                //complexNumber.draw(canvas, ctx, grid);
+
+
+
+                for(var i = 0; i < geoObjectList.length; i++){
+                    var geoObject = geoObjectList[i];
+                    geoObject.draw(pointHolder, canvas, ctx, grid);
+                }
+
+                for(var variableId in pointHolder){
+                    var point = pointHolder[variableId];
+                    point.draw(canvas, ctx, grid);
+                }
+            }
+
+            setInterval(draw, 20);
+
+        </script>
+    </body>
+</html>
