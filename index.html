@@ -766,7 +766,7 @@ drawline(p,f, #EE33EE55)</textarea>
                     return constructDefinedPoint(id, orthoExp, pointHolder);
                 },
                 chordIntersect : function(id, a, b, c, d, pointHolder){
-                    var intersectExp = (a.exp.mul(b.exp.mul(c.exp.add(d.exp))).sub(c.exp.mul(d.exp.mul(a.exp.add(b.exp))))).div(a.exp.mul(b).sub(c.exp.mul(d.exp)));
+                    var intersectExp = (a.exp.mul(b.exp.mul(c.exp.add(d.exp))).sub(c.exp.mul(d.exp.mul(a.exp.add(b.exp))))).div(a.exp.mul(b.exp).sub(c.exp.mul(d.exp)));
                     return constructDefinedPoint(id, intersectExp, pointHolder);
                 },
                 unitCircleLineIntersect : function(id, z, a, pointHolder){ //z is on unit circle
