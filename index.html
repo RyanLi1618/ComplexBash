@@ -2,30 +2,66 @@
 <html>
     <head>
         <meta charset="utf-8"/>
-        <title>Complex Geometry Site</title>
+        <title>Complex Bash</title>
         <style>
             * {padding:0; margin:0;}
             canvas {background: #eee; display: inline-block; margin: 0 auto; border: 2px solid black}
             #codeInput {display:block}
-            h1{text-align: center;}
+            h1{text-align: center}
+            p{margin: 20px;}
+            p.code{font-family: consolas; margin: 10px;}
         </style>
     </head>
 
     <body>
         <br>
         <h1>
-            Complex Geometry Site
+            Complex Bash
         </h1>
         <br>
         <div style="margin:auto;width:fit-content">
             <div style="display: inline-block">
-                <textarea id="codeInput" rows="30" cols="45" spellcheck="false"></textarea>
+                <textarea id="codeInput" rows="30" cols="45" spellcheck="false">
+unitcircle(a, 120)
+unitcircle(b, -150)
+unitcircle(c, -30)
+unitcircle(p, 30, purple, true, 0.3)
+ucfoot(d, b, c, p, purple)
+ucfoot(e, c, a, p, purple)
+ucfoot(f, a, b, p, purple)
+ucortho(h, a, b, c)
+wavg(m, p, h, 0.5, purple)
+
+drawline(a,b)
+drawline(b,c)
+drawline(c,a)
+drawline(d,e, #EE33EE)
+drawline(p,d, #EE33EE55)
+drawline(p,e, #EE33EE55)
+drawline(p,f, #EE33EE55)</textarea>
                 <div>
                     <button type="button" onclick="runCode();" style="width:100%">Run Code</button>
                 </div>
             </div>
             
             <canvas id="myCanvas" width="800" height="600">Canvas not supported</canvas>
+
+            <br>
+            <br>
+            <h2>Point Construction Methods</h2>
+            <p class="code">unitcircle(name, theta=0, color="#3333EE", show="true", speed="0")</p>
+            <p>Creates a point on the unit circle.<br>
+                "name" is the label of the point<br>
+                "theta" is the angle in degrees<br>
+                "color" is the color parsed by JS<br>
+                "show" is whether or not the point is shown<br>
+                "speed" refers to how quickly it moves
+            </p>
+            <h2>Check Methods</h2>
+            <h2>Verify Methods</h2>
+            <br>
+            <hr>
+            <br>
         </div>
         
         <script>
@@ -161,13 +197,8 @@
                     },
 
                     toString : function(){
-                        if (this.imag == 0){
-                            return "" + this.real;
-                        } else if (this.real == 0){
-                            return "" + this.imag + "i";
-                        } else {
-                            return "" + this.real + "+" + this.imag + "i";
-                        }
+                        var M = 100000;
+                        return "" + Math.round(this.real*M)/M + "+" + Math.round(this.imag*M)/M + "i";
                     },
                     clone:function(){
                         return constructComplexNumber(this.real, this.imag);
@@ -192,6 +223,10 @@
                     },
                     isZero : function(){
                         return this.real == 0 && this.imag == 0;
+                    },
+                    probablyEqual : function(c){
+                        var threshold = 0.0000001
+                        return(this.real - c.real < threshold && this.imag - c.imag < threshold);
                     }
                 }
             }
@@ -208,7 +243,6 @@
             function constructPolynomial(){
                 return {
                     terms : {},
-                    //THIS METHOD IS ONLY FOR TESTING PURPOSES; SHOULD NOT BE USED FOR REAL FOR REAL
                     insertLazyTerm : function(term){ //Only does stuff if the coefficient isn't 0
                         if(term._coefficient != 0){
                             term._id = this.generateId(term);
@@ -575,6 +609,8 @@
                 alert(foot.eval({a:ccn(1,0), b:ccn(-1, 0), c:ccn(0, 1)}));
             }
 
+            //ratExpTest();
+
             function constructAbstractPoint(){
                 return {
                     id : null,
@@ -600,6 +636,7 @@
                     draw : function(canvas, ctx, grid){
                         if(this.show){
                             var value = this.eval();
+                            //alert(value);
                             var gridCoords = {x: value.real, y: value.imag};
                             var canvasCoords = grid.convertToCanvasCoords(gridCoords, canvas);
                             
@@ -624,6 +661,7 @@
                     eval : function(){
                         alert("Undefined");
                     }
+                    //value : null
                 };
             }
 
@@ -685,9 +723,10 @@
 
                 point.pointHolder = pointHolder;
 
-                point.exp = exp;
+                point.exp = exp.simplify();
                 
                 point.conjExp = exp.conj(pointHolder);
+                //alert(point.conjExp.toString());
 
                 point.eval = function(pointHolder){
                     var complexVars = {};
@@ -718,38 +757,74 @@
                     var newExp = half.mul(a.exp.add(b.exp.add(z.exp.sub(a.exp.mul(b.exp.mul(z.conjExp))))));
                     return constructDefinedPoint(id, newExp, pointHolder);
                 },
+                unitCircleReflect : function(id, a, b, z, pointHolder){
+                    var reflectExp = a.exp.add(b.exp).sub(a.exp.mul(b.exp.mul(z.conjExp)));
+                    return constructDefinedPoint(id, reflectExp, pointHolder);
+                },
                 unitCircleOrthocenter : function(id, a, b, c, pointHolder){
                     var orthoExp = a.exp.add(b.exp.add(c.exp));
                     return constructDefinedPoint(id, orthoExp, pointHolder);
+                },
+                chordIntersect : function(id, a, b, c, d, pointHolder){
+                    var intersectExp = (a.exp.mul(b.exp.mul(c.exp.add(d.exp))).sub(c.exp.mul(d.exp.mul(a.exp.add(b.exp))))).div(a.exp.mul(b).sub(c.exp.mul(d.exp)));
+                    return constructDefinedPoint(id, intersectExp, pointHolder);
+                },
+                unitCircleLineIntersect : function(id, z, a, pointHolder){ //z is on unit circle
+                    var newExp = (a.exp.sub(z.exp)).div(constructConstRatExp(1).sub(a.conjExp.mul(z.exp)));
+                    return constructDefinedPoint(id, newExp, pointHolder);
                 }
             }
 
             var verify = {
-                collinear : function(nameA, nameB, nameC, pointHolder){
+                parallel : function(nameA, nameB, nameC, nameD, pointHolder){ //Is AB || BC?
                     var pointA = pointHolder[nameA];
                     var pointB = pointHolder[nameB];
                     var pointC = pointHolder[nameC];
+                    var pointD = pointHolder[nameD];
 
-                    var testExp = pointA.exp.sub(pointB.exp).div(pointA.exp.sub(pointC.exp));
+                    var testExp = pointA.exp.sub(pointB.exp).div(pointC.exp.sub(pointD.exp));
                     
+                    //testExp.simplify();
                     return testExp.conj(pointHolder).equals(testExp);
                 },
-                perpendicular : function(nameA, nameB, nameC, pointHolder){ //Point A is tested to see if it's a right angle
+                perpendicular : function(nameA, nameB, nameC, nameD, pointHolder){ //Is AB perp to CD?
                     var pointA = pointHolder[nameA];
                     var pointB = pointHolder[nameB];
                     var pointC = pointHolder[nameC];
+                    var pointD = pointHolder[nameD];
 
-                    var testExp = pointA.exp.sub(pointB.exp).div(pointA.exp.sub(pointC.exp));
+                    var testExp = pointA.exp.sub(pointB.exp).div(pointC.exp.sub(pointD.exp));
                     
                     //testExp.simplify();
                     return testExp.conj(pointHolder).mul(constructConstRatExp(-1)).equals(testExp);
+                },
+                generalSame : function(nameA, nameB, pointHolder){
+                    var pointA = pointHolder[nameA];
+                    var pointB = pointHolder[nameB];
+                    return pointA.exp.equals(pointB.exp);
+                },
+                /*specificSame : function(nameA, nameB, pointHolder){
+                    var pointA = pointHolder[nameA];
+                    var pointB = pointHolder[nameB];
+                    return pointA.eval(pointHolder).probablyEqual(pointB.eval(pointHolder));
+                },*/
+                concyclic : function(nameA, nameB, nameC, nameD, pointHolder){
+                    var pointA = pointHolder[nameA];
+                    var pointB = pointHolder[nameB];
+                    var pointC = pointHolder[nameC];
+                    var pointD = pointHolder[nameD];
+
+                    var testExp = pointA.exp.sub(pointB.exp).div(pointA.exp.sub(pointC.exp)).div(pointD.exp.sub(pointB.exp).div(pointD.exp.sub(pointC.exp)));
+                    
+                    //testExp.simplify();
+                    return testExp.conj(pointHolder).equals(testExp);
+                },
+                onUnitCircle : function(nameA, pointHolder){
+                    var pointA = pointHolder[nameA];
+
+                    return constructConstRatExp(1).equals(pointA.exp.mul(pointA.conjExp));
                 }
             }
-            
-            //alert(verify.collinear("a","b","c", pointHolder));
-            //alert(verify.collinear("d","e","f", pointHolder));
-            //alert(verify.collinear("d","m","f", pointHolder));
-            //alert(verify.perpendicular("d","b","p", pointHolder));
             
             var geoObjectList = [];
 
@@ -841,9 +916,48 @@
                 return geoObject;
             }
 
+            function constructCircleGeoObject(nameA, nameB, nameC){
+                var geoObject = constructAbstractGeoObject();
+                geoObject.id = "circle_" + nameA + nameB + nameC;
+                geoObject.pointNames = [nameA, nameB, nameC];
+
+                geoObject.getPerpBisLine = function(pointA, pointB){
+                    var cxt = pointA.x-pointB.x;
+                    var cyt = pointA.y-pointB.y;
+                    var ct = cxt*(pointA.x + pointB.x)/2 + cyt*(pointA.y + pointB.y)/2;
+                    return {a: cxt, b: cyt, c: ct};
+                }
+                geoObject.draw = function(pointHolder, canvas, ctx, grid){
+                    var canvasCoordsList = this.getCanvasCoords(pointHolder, grid, canvas);
+                    var perpBisAB = this.getPerpBisLine(canvasCoordsList[0], canvasCoordsList[1]);
+                    var perpBisAC = this.getPerpBisLine(canvasCoordsList[0], canvasCoordsList[2]);
+                    
+                    var det = perpBisAB.a * perpBisAC.b - perpBisAB.b * perpBisAC.a;
+                    if(det == 0){
+                        return;
+                    }
+
+                    var centerPoint = {
+                        x: (perpBisAB.c * perpBisAC.b - perpBisAB.b * perpBisAC.c)/det,
+                        y: (perpBisAB.a * perpBisAC.c - perpBisAB.c * perpBisAC.a)/det
+                    }
+
+                    var r = Math.sqrt(Math.pow(centerPoint.x - canvasCoordsList[0].x, 2) + Math.pow(centerPoint.y - canvasCoordsList[0].y, 2));
+
+                    ctx.lineWidth = 5;
+                    ctx.strokeStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(centerPoint.x, centerPoint.y, r, 0, 2 * Math.PI);
+                    ctx.stroke();
+                }
+                return geoObject;
+            }
+
+            
             function runCode(){
                 codeHandler.runCode(document.getElementById("codeInput").value);
             }
+
             var codeHandler = {
                 functions : { //All must accept string arguments
                     unitcircle : function(name, theta, color, show, speed){
@@ -864,11 +978,7 @@
                         if(isNaN(theta)) theta = 0;
 
                         show = show.toLowerCase();
-                        if(show == "true" || show == "t"){
-                            show = true;
-                        } else {
-                            show = false;
-                        }
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
 
                         speed = parseFloat(speed);
                         if(isNaN(speed)) speed = 0;
@@ -905,17 +1015,17 @@
                         if(show == undefined) show = "true";
 
                         show = show.toLowerCase();
-                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
 
                         pointHolder[name] = pointFormulas.unitCircleOrthocenter(name, pointHolder[nameA], pointHolder[nameB], pointHolder[nameC], pointHolder).reShow(show).reColor(color);
 
                     },
-                    wavg: function(name, nameA, nameB, k, color, show){
+                    wavg : function(name, nameA, nameB, k, color, show){
                         if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
                         if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
                         if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
                         if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
-                        if(k == undefined) k = 0.5;
+                        if(k == undefined) k = "0.5";
                         if(color == undefined) color = "#3333EE";
                         if(show == undefined) show = "true";
                         
@@ -923,23 +1033,202 @@
                         if(isNaN(k)) k = 0.5;
 
                         show = show.toLowerCase();
-                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
 
                         pointHolder[name] = pointFormulas.weightedAverage(name, pointHolder[nameA], pointHolder[nameB], k, pointHolder).reShow(show).reColor(color);
 
                     },
+                    ucreflect : function(name, nameA, nameB, nameZ, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameZ == undefined || pointHolder[nameZ] == undefined){ alert("ERROR: Invalid nameZ given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.unitCircleReflect(name, pointHolder[nameA], pointHolder[nameB], pointHolder[nameZ], pointHolder).reShow(show).reColor(color);
+                    },
+                    ucintersect : function(name, nameA, nameB, nameC, nameD, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(nameD == undefined || pointHolder[nameD] == undefined){ alert("ERROR: Invalid nameD given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.chordIntersect(name, pointHolder[nameA], pointHolder[nameB], pointHolder[nameC], pointHolder[nameD], pointHolder).reShow(show).reColor(color);
+                    },
+                    uclineintersect : function(name, nameZ, nameA, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameZ == undefined || pointHolder[nameZ] == undefined){ alert("ERROR: Invalid nameZ given"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "true" || show == "t"){ show = true; } else { show = false; }
+
+                        pointHolder[name] = pointFormulas.unitCircleLineIntersect(name, pointHolder[nameZ], pointHolder[nameA], pointHolder).reShow(show).reColor(color);
+                    },
                     constpoint : function (name, real, imag, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(real == undefined) real = "0.0";
+                        if(imag == undefined) imag = "0.0";
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        real = parseFloat(real);
+                        if(isNaN(real)) real = 0.5;
+                        imag = parseFloat(imag);
+                        if(isNaN(imag)) imag = 0.5;
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = pointFormulas.constantPoint(name, ccn(real, imag), pointHolder).reShow(show).reColor(color);
+                    },
+                    conjpoint : function(name, nameZ, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameZ == undefined || pointHolder[nameZ] == undefined){ alert("ERROR: Invalid nameZ given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = pointFormulas.conjugatePoint(name, pointHolder[nameZ], pointHolder).reShow(show).reColor(color);
+                    },
+                    addpoint : function(name, nameA, nameB, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = constructDefinedPoint(name, pointHolder[nameA].exp.add(pointHolder[nameB].exp), pointHolder).reShow(show).reColor(color);
 
                     },
+                    subpoint : function(name, nameA, nameB, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = constructDefinedPoint(name, pointHolder[nameA].exp.sub(pointHolder[nameB].exp), pointHolder).reShow(show).reColor(color);
+
+                    },
+                    mulpoint : function(name, nameA, nameB, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = constructDefinedPoint(name, pointHolder[nameA].exp.mul(pointHolder[nameB].exp), pointHolder).reShow(show).reColor(color);
+
+                    },
+                    divpoint : function(name, nameA, nameB, color, show){
+                        if(name == undefined || name == ""){ alert("ERROR: No name given to point"); return; }
+                        if(pointHolder[name] != undefined){ alert("ERROR: Point " + name + " already created; function does nothing"); return; }
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#3333EE";
+                        if(show == undefined) show = "true";
+
+                        show = show.toLowerCase();
+                        if(show == "false" || show == "f"){ show = false; } else { show = true; }
+
+                        pointHolder[name] = constructDefinedPoint(name, pointHolder[nameA].exp.div(pointHolder[nameB].exp), pointHolder).reShow(show).reColor(color);
+
+                    },
+                    
                     drawlineseg : function(nameA, nameB, color){
                         if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
                         if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#66666666";
                         geoObjectList.push(constructLineSegGeoObject(nameA, nameB).reColor(color));
                     },
                     drawline : function(nameA, nameB, color){
                         if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
                         if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(color == undefined) color = "#66666666";
                         geoObjectList.push(constructLineGeoObject(nameA, nameB).reColor(color));
+                    },
+                    drawcircle : function(nameA, nameB, nameC, color){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(color == undefined) color = "#66666666";
+                        geoObjectList.push(constructCircleGeoObject(nameA, nameB, nameC).reColor(color));
+                    },
+
+                    alertexp : function(name){
+                        if(name == undefined || pointHolder[name] == undefined) { alert("ERROR: Invalid name given"); return; }
+                        alert("Point " + name + "\n" + pointHolder[name].exp.toString());
+                    },
+                    alertconjexp : function(name){
+                        if(name == undefined || pointHolder[name] == undefined) { alert("ERROR: Invalid name given"); return; }
+                        alert("Point " + name + "\n" + pointHolder[name].conjExp.toString());
+                    },
+                    alerteval : function(name){
+                        if(name == undefined || pointHolder[name] == undefined) { alert("ERROR: Invalid name given"); return; }
+                        alert("Point " + name + ": " + pointHolder[name].eval(pointHolder).toString());
+                    },
+
+                    vparallel : function(nameA, nameB, nameC, nameD){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(nameD == undefined || pointHolder[nameD] == undefined){ alert("ERROR: Invalid nameD given"); return; }
+                        alert("Line " + nameA + nameB + " and line " + nameC + nameD + " parallel: " + verify.parallel(nameA, nameB, nameC, nameD, pointHolder));
+                    },
+                    vperp : function(nameA, nameB, nameC, nameD){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(nameD == undefined || pointHolder[nameD] == undefined){ alert("ERROR: Invalid nameD given"); return; }
+                        alert("Line " + nameA + nameB + " and line " + nameC + nameD + " perpendicular: " + verify.perpendicular(nameA, nameB, nameC, nameD, pointHolder));
+                    },
+                    vsame : function(nameA, nameB){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        alert("Point " + nameA + " and " + nameB + " same: " + verify.generalSame(nameA, nameB, pointHolder));
+                    },
+                    vconcyclic : function(nameA, nameB, nameC, nameD){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        if(nameB == undefined || pointHolder[nameB] == undefined){ alert("ERROR: Invalid nameB given"); return; }
+                        if(nameC == undefined || pointHolder[nameC] == undefined){ alert("ERROR: Invalid nameC given"); return; }
+                        if(nameD == undefined || pointHolder[nameD] == undefined){ alert("ERROR: Invalid nameD given"); return; }
+                        alert("Points " + nameA + ", " + nameB + ", " + nameC + ", " + nameD + " concyclic: " + verify.concyclic(nameA, nameB, nameC, nameD, pointHolder));
+                    },
+                    vuc : function(nameA){
+                        if(nameA == undefined || pointHolder[nameA] == undefined){ alert("ERROR: Invalid nameA given"); return; }
+                        alert("Point " + nameA + " on unit circle: " + verify.onUnitCircle(nameA,pointHolder));
                     }
                 },
                 code : [],
@@ -969,26 +1258,21 @@
                     }
                 }
             }
-            
-            //TODO: 3000 methods
-            //Intersection of chords
-            //Intersection of lines
-            //General complex foot
-            //Intersection of line with a point on unit circle with unit circle
-            //Parse formula?
 
-            //TODO: circle geoObject
-
-            //TODO: psuedo programming
-
-            //TODO: verify methods
-            //Concyclic check
-            //Check on chord
-            //Tangent check?
 
             //Help in the parts below
 
             //=== Unlikely ===
+
+            //Check on chord
+            //Intersection of lines
+            //General complex foot
+            //Intersection of circle with unit circle
+            //Parse formula?
+            //Check coordinates
+            //Verify same current complex val
+
+            //TODO: lineSeg point
 
             //TODO: improve pointHolder
 
@@ -1024,6 +1308,15 @@
                     var point = pointHolder[variableId];
                     point.draw(canvas, ctx, grid);
                 }
+
+                /*
+                var mouseCanvasCoords = {x: inputHolder.mouseX, y: inputHolder.mouseY};
+                drawText("Coords: " + inputHolder.mouseX + ", " + inputHolder.mouseY, 20, 40);
+                var mouseGridCoords = grid.convertToGridCoords(mouseCanvasCoords, canvas);
+                drawText("GridCoords: " + mouseGridCoords.x + ", " + mouseGridCoords.y, 20, 70);
+                
+                drawText("MouseDown?: " + inputHolder.mouseDown, 20, 100);
+                */
             }
 
             setInterval(draw, 20);
